@@ -13,6 +13,7 @@ Created by **Anika Mukherjee** — [cuteypieanika@gmail.com](mailto:cuteypieanik
 - NVIDIA live telemetry for temperature, power, utilization, memory use, and clocks.
 - Portable temporary-file storage read/write check that cleans up after itself.
 - Named-game 1080p readiness estimates using CPU results, installed RAM, GPU class, and VRAM. Includes a 1,544-title catalog.
+- Interactive Terminal User Interface (TUI) powered by Questionary for easy navigation and game searching.
 - Calm card-based terminal design, plus stable JSON/JSONL and Markdown output.
 - Versioned, integrity-stamped result bundles and baseline comparisons.
 - Safe per-user report locations, even when launched from a protected directory.
@@ -26,6 +27,14 @@ python -m pip install system_perf-0.3.0-py3-none-any.whl
 On Windows, use `py -m pip` if `python` is not on `PATH`.
 
 ## Start here
+
+```bash
+system-perf
+```
+
+The interactive menu lets you search the game catalog, run tests, and check hardware inventory directly from an easy-to-use terminal interface.
+
+You can also run commands directly:
 
 ```bash
 system-perf doctor

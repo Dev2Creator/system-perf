@@ -10,6 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Optional
 
+import questionary
 import typer
 from rich import box
 from rich.live import Live
@@ -30,7 +31,7 @@ from system_perf.workloads import memory_copy, run_cpu, storage_io
 app = typer.Typer(
     name="system-perf",
     help=f"{BRAND} — {TAGLINE}",
-    no_args_is_help=True,
+    no_args_is_help=False,
     rich_markup_mode="rich",
     add_completion=False,
 )
@@ -497,6 +498,225 @@ def version_command() -> None:
     out.print(f"Schema {SCHEMA_VERSION} · Python {platform.python_version()} · {platform.system()} {platform.machine()}")
     out.print("Copyright © 2026 Anika Mukherjee <cuteypieanika@gmail.com>")
     out.print("License: AGPL-3.0-or-later")
+
+
+ACCENT_BRIGHT = "#F29265"
+CREAM = "#D7C0AA"
+MUTED = "#614B39"
+BORDER = "#6B4E36"
+SELECTED = "#3478F6"
+
+
+def menu_style():
+    return questionary.Style([
+        ("qmark", f"fg:{ACCENT_BRIGHT} bold"),
+        ("question", f"fg:{CREAM} bold"),
+        ("answer", f"fg:{ACCENT_BRIGHT} bold"),
+        ("pointer", "fg:#9CBFFF bold"),
+        ("highlighted", f"bg:{SELECTED} fg:#FFFFFF bold"),
+        ("selected", f"fg:{CREAM}"),
+        ("instruction", f"fg:{MUTED}"),
+    ])
+
+
+def command_choice(command: str, description: str, value: str | None):
+    out = console(False)
+    width = max(48, out.width - 4) if out.width else 80
+    label = f"/{command:<11}{description}"
+    return questionary.Choice(label.ljust(width), value=value)
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """
+    SYSTEM-PERF CLI Entrypoint
+    """
+    try:
+        import sys
+        from irl_identity.first_run import ensure_first_run_login
+        ensure_first_run_login("system-perf", app_label="SYSTEM PERF", argv=sys.argv)
+    except ImportError:
+        pass
+        
+    if ctx.invoked_subcommand is None:
+        run_interactive_menu()
+
+
+def run_interactive_menu():
+    out = console(False)
+    out.clear()
+
+    # ANSI Art title mimicking IRL GASLIGHT
+    try:
+        from importlib.resources import files
+        from rich.text import Text
+        
+        ansi_content = files("system_perf.data").joinpath("title.ansi").read_text(encoding="utf-8")
+        lines = ansi_content.splitlines()
+        visible = [line for line in lines if line.strip()]
+        if visible:
+            min_spaces = min((len(line) - len(line.lstrip())) for line in visible)
+            left_aligned = "\n".join(line[min_spaces:] for line in lines)
+            title_renderable = Text.from_ansi(left_aligned)
+            title_renderable.stylize(f"bold {ACCENT_BRIGHT}")
+        else:
+            title_renderable = Text("SYSTEM PERF", style=f"bold {ACCENT_BRIGHT}")
+    except Exception:
+        from rich.text import Text
+        title_renderable = Text("SYSTEM PERF", style=f"bold {ACCENT_BRIGHT}")
+
+    out.print(title_renderable)
+    
+    tagline_text = Text(f"✦  {TAGLINE}  ✦", style=CREAM)
+    out.print(tagline_text)
+    out.print()
+
+    # Identity Loading
+    from pathlib import Path
+    import json
+    profile_path = Path.home() / ".irl" / "profile.json"
+    identity_line = ""
+    if profile_path.exists():
+        try:
+            with open(profile_path, "r", encoding="utf-8") as f:
+                profile = json.load(f)
+            name = profile.get("name")
+            if name:
+                pronunciation = profile.get("name_pronunciation")
+                pronouns = profile.get("pronouns")
+                
+                pronun_str = f" [{MUTED}]({pronunciation})[/{MUTED}]" if pronunciation else ""
+                pronouns_str = f" [{CREAM}]• {pronouns}[/{CREAM}]" if pronouns else ""
+                
+                identity_line = f"[{MUTED}]Identity   [/{MUTED}][{ACCENT_BRIGHT}]🗿 {name}[/{ACCENT_BRIGHT}]{pronun_str}{pronouns_str}"
+        except Exception:
+            pass
+
+    if identity_line:
+        out.print(Panel(
+            identity_line,
+            border_style=BORDER,
+            box=box.SQUARE,
+            expand=True,
+            width=min(74, max(48, out.width - 2)) if out.width else 74,
+            padding=(0, 1),
+        ))
+
+    host = host_info()
+    details = host.details or {}
+    
+    gpu_name = host.gpu[0].get("name", "Unknown") if host.gpu else "Graphics backend unavailable"
+    
+    stats_text = (
+        f"[{MUTED}]CPU        [/{MUTED}][{ACCENT_BRIGHT}]{host.cpu_model}[/{ACCENT_BRIGHT}]\n"
+        f"[{MUTED}]Memory     [/{MUTED}][{CREAM}]{host.memory_bytes / (1024**3):.1f} GiB[/{CREAM}]\n"
+        f"[{MUTED}]GPU        [/{MUTED}][{CREAM}]{gpu_name}[/{CREAM}]\n"
+        f"[{MUTED}]Storage    [/{MUTED}][{CREAM}]{len(details.get('storage', []))} drives detected[/{CREAM}]\n"
+        f"[{MUTED}]System     [/{MUTED}][{CREAM}]{host.os} {host.os_version}[/{CREAM}]"
+    )
+    
+    out.print(Panel(
+        stats_text,
+        border_style=BORDER,
+        box=box.SQUARE,
+        expand=True,
+        width=min(74, max(48, out.width - 2)) if out.width else 74,
+        padding=(0, 1),
+    ))
+
+    status = Text()
+    status.append("● ", style=ACCENT_BRIGHT)
+    status.append("system    ", style=MUTED)
+    status.append("Ready - choose a command below", style=CREAM)
+    out.print(status)
+    
+    version_line = Text("SYSTEM-PERF ", style=MUTED)
+    version_line.append(f"v{__version__} - safe hardware telemetry.", style=f"bold {ACCENT_BRIGHT}")
+    out.print(version_line)
+    out.print()
+    
+    while True:
+        answer = questionary.select(
+            "/",
+            choices=[
+                command_choice("test", "Run a quick diagnostic system test", "quick"),
+                command_choice("full", "Run a comprehensive benchmark", "full"),
+                command_choice("search", "Search & Test a game for this PC", "search"),
+                command_choice("detect", "View hardware inventory", "detect"),
+                command_choice("doctor", "Check system trustworthiness", "doctor"),
+                command_choice("exit", "Exit SYSTEM-PERF", "exit"),
+            ],
+            style=menu_style(),
+            qmark="",
+            pointer="»",
+            instruction="(up/down to move - enter to select)",
+        ).ask()
+
+        if not answer or answer == "exit":
+            break
+            
+        if answer == "quick":
+            out.clear()
+            run("quick")
+            input("\nPress Enter to return to menu...")
+            out.clear()
+        elif answer == "full":
+            out.clear()
+            run("full")
+            input("\nPress Enter to return to menu...")
+            out.clear()
+        elif answer == "detect":
+            out.clear()
+            detect("terminal")
+            input("\nPress Enter to return to menu...")
+            out.clear()
+        elif answer == "doctor":
+            out.clear()
+            doctor("terminal")
+            input("\nPress Enter to return to menu...")
+            out.clear()
+        elif answer == "search":
+            query = questionary.text(
+                "Game search query:",
+                style=menu_style(),
+                qmark="?"
+            ).ask()
+            if not query:
+                out.clear()
+                continue
+            out.print(f"[dim]Searching catalog for '{query}'...[/dim]")
+            results = search_games(query, limit=20)
+            if not results:
+                out.print(Panel(f"No results found for '{query}'.", title="[bold red] No matches [/bold red]", border_style="red"))
+                input("\nPress Enter to return to menu...")
+                out.clear()
+                continue
+                
+            choices = [
+                questionary.Choice(f"{r['name']} ({r.get('year') or '—'}) - {r.get('tier', 'generic')}", value=r['name'])
+                for r in results
+            ]
+            choices.append(questionary.Choice("Cancel", value=None))
+            
+            selected_game = questionary.select(
+                "Select a game to evaluate:",
+                choices=choices,
+                style=menu_style(),
+                qmark=">"
+            ).ask()
+            
+            if selected_game:
+                out.clear()
+                header(out, f"evaluating {selected_game}")
+                host = host_info()
+                items = evaluate_games(asdict(host), {}, selected=selected_game)
+                if items:
+                    result_tables(out, {"metrics": {}, "predictions": [], "game_predictions": items})
+                    out.print("\n[dim]Note: Fast hardware estimation based on system components, not a live load test.[/dim]\n")
+                else:
+                    out.print(Panel(f"Could not evaluate '{selected_game}'.", border_style="red"))
+                input("Press Enter to return to menu...")
+            out.clear()
 
 
 def main() -> None:
