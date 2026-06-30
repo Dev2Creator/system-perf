@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "system-perf"
-version = "0.2.0"
+version = "0.3.0"
 description = "Cross-platform terminal-native hardware diagnostics and safe performance profiling"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -37,7 +37,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-system_perf = ["NOTICE.md"]
+system_perf = ["NOTICE.md", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

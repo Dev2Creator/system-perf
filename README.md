@@ -6,13 +6,13 @@ SYSTEM-PERF™ is a cross-platform terminal-native hardware diagnostic, bounded 
 
 Created by **Anika Mukherjee** — [cuteypieanika@gmail.com](mailto:cuteypieanika@gmail.com)
 
-## What v0.2.0 does
+## What v0.3.0 does
 
 - Deep hardware inventory: system model, motherboard, BIOS/firmware, CPU topology/clocks/cache, RAM modules/speeds, graphics adapters/VRAM/drivers, and storage devices.
 - Safe multi-process CPU and RAM tests with cancellation and thermal limits where CPU sensors are available.
 - NVIDIA live telemetry for temperature, power, utilization, memory use, and clocks.
 - Portable temporary-file storage read/write check that cleans up after itself.
-- Named-game 1080p readiness estimates using CPU results, installed RAM, GPU class, and VRAM.
+- Named-game 1080p readiness estimates using CPU results, installed RAM, GPU class, and VRAM. Includes a 1,544-title catalog.
 - Calm card-based terminal design, plus stable JSON/JSONL and Markdown output.
 - Versioned, integrity-stamped result bundles and baseline comparisons.
 - Safe per-user report locations, even when launched from a protected directory.
@@ -20,7 +20,7 @@ Created by **Anika Mukherjee** — [cuteypieanika@gmail.com](mailto:cuteypieanik
 ## Install
 
 ```bash
-python -m pip install system_perf-0.2.0-py3-none-any.whl
+python -m pip install system_perf-0.3.0-py3-none-any.whl
 ```
 
 On Windows, use `py -m pip` if `python` is not on `PATH`.
@@ -47,6 +47,7 @@ Or evaluate an existing result:
 system-perf games
 system-perf games --result path/to/result.json
 system-perf games --result path/to/result.json --game forza
+system-perf games --search witcher
 ```
 
 ## Focused tests
@@ -63,6 +64,12 @@ The GPU command is currently a capability and telemetry probe, not a rendered GP
 
 ## Supported game models
 
+SYSTEM-PERF includes a 1,544-title game catalog based on a games-only Steam top-sellers snapshot dated 2026-06-30.
+
+The catalog provides broad requirement tiers inferred from release cohorts and store metadata. These are generic limits and have low confidence compared to our hand-tuned models.
+
+The 12 spotlight models (hand-tuned, medium confidence) are:
+
 - Minecraft Java
 - Valorant
 - Counter-Strike 2
@@ -75,6 +82,13 @@ The GPU command is currently a capability and telemetry probe, not a rendered GP
 - Hogwarts Legacy
 - Starfield
 - Microsoft Flight Simulator
+
+To search the catalog, use `--search`:
+
+```bash
+system-perf games --search witcher
+system-perf games --search "resident evil"
+```
 
 Game output uses four states:
 

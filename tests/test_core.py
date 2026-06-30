@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from system_perf.analysis import predictions
-from system_perf.games import evaluate_games, gpu_model_score, resolve_game
+from system_perf.games import evaluate_games, gpu_model_score, resolve_game, catalog_count, load_catalog, search_games
 from system_perf.hardware import host_info
 from system_perf.storage import load_result, prepare_output_path, save_result
 from system_perf.types import RunResult, utc_now
@@ -91,4 +91,47 @@ def test_game_readiness_uses_cpu_ram_gpu_and_vram():
     assert result[0]["game"] == "Cyberpunk 2077"
     assert result[0]["status"] == "PLAYABLE"
     assert result[0]["scores"]["vram_gib"] == 4.0
-    assert evaluate_games(host, metrics, "definitely not a game") == []
+    assert evaluate_games(host, metrics, "zzzzzzunknown12345") == []
+
+def test_catalog_size():
+    assert catalog_count() >= 1000
+
+def test_catalog_loads():
+    catalog = load_catalog()
+    assert "games" in catalog
+    assert "tiers" in catalog
+
+def test_search_finds_witcher_and_resident_evil():
+    witcher = search_games("Witcher 3")
+    assert any(g.get("name", "").startswith("The Witcher 3") for g in witcher)
+    re_games = search_games("Resident Evil")
+    assert any("Resident Evil" in g.get("name", "") for g in re_games)
+
+def test_aliases_work():
+    assert resolve_game("cs2") == "Counter-Strike 2"
+    assert resolve_game("minecraft") == "Minecraft Java"
+
+def test_generic_catalog_games_readiness():
+    host = {
+        "memory_bytes": 16 * 1024**3,
+        "physical_cpus": 8,
+        "logical_cpus": 16,
+        "gpu": [{"name": "NVIDIA GeForce RTX 3050 4GB Laptop GPU", "memory_mib": 4096}],
+    }
+    metrics = {"cpu": {"throughput_mops": 3.0}, "memory": {"bandwidth_gib_s": 5.0}}
+    result = evaluate_games(host, metrics, "The Witcher 3: Wild Hunt")
+    assert len(result) == 1
+    assert result[0]["confidence"] == "low"
+    assert result[0]["status"] in ("GREAT", "PLAYABLE", "LIMITED", "UNKNOWN")
+
+def test_spotlight_model_confidence():
+    host = {
+        "memory_bytes": 16 * 1024**3,
+        "physical_cpus": 8,
+        "logical_cpus": 16,
+        "gpu": [{"name": "NVIDIA GeForce RTX 3050 4GB Laptop GPU", "memory_mib": 4096}],
+    }
+    metrics = {"cpu": {"throughput_mops": 3.0}, "memory": {"bandwidth_gib_s": 5.0}}
+    result = evaluate_games(host, metrics, "Cyberpunk 2077")
+    assert len(result) == 1
+    assert result[0]["confidence"] == "medium"

@@ -19,7 +19,7 @@ from rich.table import Table
 
 from system_perf import SCHEMA_VERSION, __version__
 from system_perf.analysis import predictions
-from system_perf.games import GAME_MODELS, evaluate_games, hardware_scores, resolve_game
+from system_perf.games import catalog_count, catalog_source, evaluate_games, hardware_scores, resolve_game, search_games
 from system_perf.hardware import gpu_telemetry, host_info, temperature
 from system_perf.presentation import BRAND, TAGLINE, console, header, host_table, print_json, result_tables
 from system_perf.storage import OutputPathError, load_result, prepare_output_path, save_result
@@ -319,42 +319,58 @@ def test_gpu(
 @app.command("games")
 def games_command(
     result: Annotated[Optional[Path], typer.Option("--result", "-r", exists=True, readable=True, help="Saved SYSTEM-PERF result")] = None,
-    game: Annotated[Optional[str], typer.Option("--game", "-g", help="Game name or alias")] = None,
+    game: Annotated[Optional[str], typer.Option("--game", "-g", help="Evaluate one game name or alias")] = None,
+    search: Annotated[Optional[str], typer.Option("--search", "-s", help="Search the bundled catalog")] = None,
+    limit: Annotated[int, typer.Option("--limit", "-n", min=1, max=2000, help="Maximum titles to display or evaluate")] = 40,
+    all_titles: Annotated[bool, typer.Option("--all", help="Use the ranked catalog instead of spotlight titles")] = False,
     format: Annotated[str, typer.Option("--format", "-f")] = "terminal",
 ) -> None:
-    """List supported games or evaluate a saved result."""
+    """Search 1,000+ games or evaluate a saved result."""
     out = console()
+    source = catalog_source()
     if result is None:
-        names = list(GAME_MODELS)
         if game:
             match = resolve_game(game)
             if not match:
-                out.print(Panel(f"No model found for '{game}'. Run [bold]system-perf games[/bold] to list supported titles.", title="[bold red] Game not found [/bold red]", border_style="red"))
+                out.print(Panel(f"No model found for '{game}'. Try [bold]system-perf games --search <words>[/bold].", title="[bold red] Game not found [/bold red]", border_style="red"))
                 raise typer.Exit(2)
-            names = [match]
+            entries = [{"name": match, "tier": "calibrated", "year": None, "platforms": []}]
+        else:
+            entries = search_games(search, limit)
         if format == "json":
-            print_json({"supported_games": names, "model": "game-readiness/0.2.0"})
+            print_json({"catalog_count": catalog_count(), "source": source, "games": entries})
             return
-        header(out, "supported game models")
-        grid = Table(box=box.SIMPLE, show_header=False, padding=(0, 2), expand=True)
-        grid.add_column(style="cyan")
-        grid.add_column(style="white")
-        for index in range(0, len(names), 2):
-            grid.add_row(f"✓ {names[index]}", f"✓ {names[index + 1]}" if index + 1 < len(names) else "")
-        out.print(Panel(grid, title="[bold] 1080p readiness library [/bold]", title_align="left", border_style="green"))
-        out.print("[dim]Run system-perf run full, then pass the saved file with --result for estimates.[/dim]")
+        header(out, f"game catalog · {catalog_count():,} titles")
+        table = Table(box=box.SIMPLE, padding=(0, 1), expand=True)
+        table.add_column("Game", style="bold white")
+        table.add_column("Year", justify="right")
+        table.add_column("Requirement tier", style="cyan")
+        table.add_column("Platforms", style="dim")
+        for item in entries:
+            table.add_row(str(item.get("name", "Unknown")), str(item.get("year") or "—"), str(item.get("tier") or "generic"), ", ".join(item.get("platforms") or []) or "—")
+        title = f" Search: {search} " if search else f" Top {len(entries)} catalog entries "
+        out.print(Panel(table, title=f"[bold]{title}[/bold]", title_align="left", border_style="green"))
+        out.print(f"[dim]Steam Store games-only top-sellers snapshot: {source.get('snapshot_date')}. Use --search, --game, or --limit.[/dim]")
         return
+
     payload = load_result(result)
-    items = evaluate_games(payload.get("host", {}), payload.get("metrics", {}), game)
+    if game:
+        items = evaluate_games(payload.get("host", {}), payload.get("metrics", {}), selected=game)
+    elif search or all_titles:
+        entries = search_games(search, limit)
+        items = evaluate_games(payload.get("host", {}), payload.get("metrics", {}), names=[entry["name"] for entry in entries])
+    else:
+        items = evaluate_games(payload.get("host", {}), payload.get("metrics", {}))
     if game and not items:
         out.print(Panel(f"No model found for '{game}'.", title="[bold red] Game not found [/bold red]", border_style="red"))
         raise typer.Exit(2)
     if format == "json":
-        print_json({"game_predictions": items})
+        print_json({"catalog_count": catalog_count(), "game_predictions": items})
         return
-    header(out, "game readiness")
+    header(out, f"game readiness · {len(items)} result{'s' if len(items) != 1 else ''}")
     result_tables(out, {"metrics": payload.get("metrics", {}), "predictions": [], "game_predictions": items})
-
+    if not game and not search and not all_titles:
+        out.print("[dim]Showing spotlight models. Use --search <words> or --all --limit <n> to evaluate more titles.[/dim]")
 
 @app.command()
 def monitor(
