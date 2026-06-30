@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "system-perf"
+version = "0.2.0"
+description = "Cross-platform terminal-native hardware diagnostics and safe performance profiling"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Anika Mukherjee", email = "cuteypieanika@gmail.com" }
+]
+dependencies = [
+  "rich>=13.7,<15",
+  "typer>=0.12,<1",
+]
+keywords = ["benchmark", "diagnostics", "hardware", "performance", "tui"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+system-perf = "system_perf.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+system_perf = ["NOTICE.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
