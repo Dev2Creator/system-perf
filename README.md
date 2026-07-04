@@ -2,6 +2,8 @@
 
 > Measure clearly. Stress safely. Know what your hardware can handle.
 
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/system-perf?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/system-perf)
+
 SYSTEM-PERF™ is a cross-platform terminal-native hardware diagnostic, bounded performance test, and game-readiness CLI for Windows, Linux, and macOS.
 
 Created by **Anika Mukherjee** — [cuteypieanika@gmail.com](mailto:cuteypieanika@gmail.com)
